@@ -1,0 +1,391 @@
+---
+title: "Final Project"
+author: "Hui Jing"
+date: "12/6/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#  install.packages("boot")
+#  install.packages("simpleboot")
+# install.packages("wBoot")
+# 
+# 
+#  install.packages("caret")
+#  install.packages("caTools")
+#  install.packages("glmnet")
+#  install.packages("mlbench")
+#  install.packages("psych")
+#  install.packages("ggplot2")
+#  install.packages("ggthemes")
+#  install.packages("dplyr")
+#  install.packages("corrplot")
+#  install.packages("corrgram")
+#  install.packages("tidyr")
+#  install.packages("magrittr")
+#  install.packages("gridExtra")
+#  install.packages("rcompanion")
+```
+
+
+## data prepareation 
+```{r}
+
+
+
+library(boot)
+library(simpleboot)
+library(wBoot)
+
+library(caret)
+library(caTools)
+library(glmnet)
+library(mlbench)
+library(psych)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(corrplot)
+library(corrgram)
+library(tidyr)  
+library(magrittr)       
+library(gridExtra) 
+library(rcompanion)
+```
+
+```{r}
+
+
+dataset <- read.csv(file="C:/Users/onepi/Documents/NEU/IE6200/final project/20191002-items.csv", header=TRUE, sep=",")
+set.seed(1315)
+#Exploring DataSet
+head(dataset)
+#printing all columns with their data type
+str(dataset)
+#Checking Null values
+any(is.na(dataset))
+
+#data Preparation
+#Dropping the url,date and itemID for EDA
+data <- dataset[c(2,3,4,6,7,8)]
+# EDA can be analyzed below
+# you can see the categoricql variables and their sub categories along with their frequencies 
+# for numerical variables you can see the different corresponding statistical parameter's values
+summary(data)
+
+```
+
+
+```{r}
+
+
+
+
+#finding correlation between numeric values
+num.cols <- sapply(dataset,is.numeric)
+#finding correlation between numeric values
+cor.data <- cor(dataset[,num.cols])
+#visualizing correlation 
+print(corrplot(cor.data , method = "color"))
+
+
+```
+
+
+
+```{r}
+options(scipen = 999)
+pairs.panels(data)
+
+```
+
+
+
+
+## Introducation 
+
+
+
+
+## Visualation 
+
+
+```{r}
+slices <-c(4422,701,1290,3318,1211)
+category<-c("beli-harddisk-eksternal","beli-laptop","beli-smart-tv","jual-flash-drives","shop-televisi-digital")
+pie(slices, labels = category, main="Pie Chart of Categories")
+```
+```{r}
+my_data <- data[ which(data$price <=3020219), ]
+
+boxplot(price~category , data = my_data, col="red", varwidth=TRUE, notch=FALSE, 
+        las=1, main="Average Price according to Category",cex.axis=0.6)
+
+```
+
+
+```{r}
+my_data= data[(data$category == "beli-harddisk-eksternal") | (data$category == "beli-laptop") | (data$category == "beli-smart-tv") | 
+                (data$category == "jual-flash-drives") | (data$category == "shop-televisi-digital"), ]
+par(mfcol=c(3,2))
+colors = c("red", "yellow", "green", "violet", "orange") 
+hist(my_data[(data$category == "beli-harddisk-eksternal"),]$price,main='beli-harddisk-eksternal',xlab='Average Price', ylab='Frequency',col=colors)
+hist(my_data[(data$category == "beli-laptop"),]$price,main='beli-laptop',xlab='Average Price', ylab='Frequency',col=colors)
+hist(my_data[(data$category == "beli-smart-tv"),]$price,main='beli-smart-tv',xlab='Average Price', ylab='Frequency',col=colors)
+hist(my_data[(data$category == "jual-flash-drives"),]$price,main='jual-flash-drives',xlab='Average Price', ylab='Frequency',col=colors)
+hist(my_data[(data$category == "shop-televisi-digital"),]$price,main='shop-televisi-digital',xlab='Average Price', ylab='Frequency',col=colors)
+
+```
+
+##### The price summary
+
+```{r}
+head(data$price, 10)
+summary(data$price, 10)
+```
+
+
+
+
+
+```{r}
+
+
+options(scipen = 999)
+g1 <- ggplot(data, aes(price)) + geom_histogram(fill = "green",bins = 20 , color = "grey30")
+
+
+#scaling
+g2 <- ggplot(data, aes(price)) + geom_histogram(fill = "blue",bins = 20 , color = "grey30") + scale_x_log10()
+grid.arrange(g1, g2,ncol = 1)
+
+
+```
+
+
+
+
+```{r}
+# data$price <-((order(data$price)))
+# quantile(data$price)
+# plotNormalHistogram(data$price)
+```
+
+
+```{r}
+qqnorm(data$price)
+qqline(data$price, col="red")
+```
+
+```{r}
+quantile(data$price, seq(.01, .99, .1))
+x_bar <- mean(data$price)
+x_bar
+```
+
+
+## Stat Test
+### One sample t-test 
+####(a) traditional statistical tools
+
+
+```{r}
+t.test(data$price, mu = 3020219, alternative = "greater")
+```
+
+####(b) using Bootstraping1
+
+```{r}
+boot.one.bca(data$price,mean , null.hyp = NULL,
+             alternative = c("greater"),
+             conf.level = 0.95, type = NULL, R = 9999)
+```
+
+
+
+
+
+  
+  mean price of flash drive 
+  
+### one sample test of proportion H0
+
+####(a) traditional statistical tools  
+
+```{r}
+#Categorial variable of interest with 2 categories is aplicable for One sample propotion test
+#We have a categorical variable with five categories but we can recode it so that instead of all five i.e
+#1.beli-harddisk-eksternal 
+#2.beli-laptop
+#3.beli-smart-tv 
+#4.jual-flash-drives
+#5.shop-televisi-digital
+#we have shop-televisi-digital and not shop-televisi-digital.
+table(data$price,data$category)
+
+binom.test( x = 6800 , n = 10942, p = 0.4, alternative="greater")
+
+```
+
+####(b) using Bootstraping  
+
+```{r}
+shop.televisi.digital <- factor(rep(c("shop-televisi-digital", "other"), c(4422, 10942-4422)))
+table(shop.televisi.digital)
+plot(shop.televisi.digital)
+
+
+shop.televisi.digital <- rep(c(1, 0), c(4422, 10942-4422))
+num_sims <- 10000
+# A vector to store my results
+results <- rep(NA, num_sims)
+# A loop for completing the simulation
+for(i in 1:num_sims){
+  results[i] <- mean(sample(x = shop.televisi.digital,
+                            size = 10942,
+                            replace = TRUE))
+}
+# Finally plot the results
+hist(results,
+     freq = FALSE, 
+     main ='Sampling Distribution of the Sample Proportion under H_0:p=0.4', 
+     xlab = 'Proportion of shop.televisi.digital', ylab = 'Density')
+# estimate a normal curve over it - this looks pretty good!
+lines(x = seq(.35, .65, .001), dnorm(seq(.35, .65, .001), mean = mean(results), sd = sd
+                                     (results)))
+abline(v=.41, col="red")
+
+count_of_more_extreme_upper_tail <- sum(results >= .4)
+bootstrap_pvalue <- count_of_more_extreme_upper_tail/num_sims
+bootstrap_pvalue
+cat("Exact Binomial p-value")
+## Exact Binomial p-value
+binom.test(x=6800, n = 10942, p=(.6), alternative="greater")$p.value
+cat("Normal Approximation p-value")
+## Normal Approximation p-value
+pnorm(0.4, lower.tail = FALSE)
+```
+
+  
+
+  
+### two sample t-test for difference in means
+####(a) traditional statistical tools
+
+```{r}
+
+
+data$category <- factor(rep(c("shop-televisi-digital", "other"), c(4422, 10942-4422)))
+
+x_bar_n <- mean(data$price[data$category=="shop-televisi-digital"])
+x_bar_s <- mean(data$price[data$category=="other"])
+# null hypothesized population mean difference between the two groups
+mu_0 <- 0
+# sample variances
+s_n_sq <- sd(data$price[data$category=="shop-televisi-digital"])**2
+s_s_sq <- sd(data$price[data$category=="other"])**2
+# sample size
+n_n <- length(data$price[data$category=="shop-televisi-digital"])
+n_s <- length(data$price[data$category=="other"])
+# t-test test statistic
+t <- (x_bar_n - x_bar_s - mu_0)/sqrt((s_n_sq/n_n) + (s_s_sq/n_s))
+
+x_bar_n
+
+(x_bar_n-x_bar_s)+(qt(0.25, min(n_n, n_s)-1)*sqrt((s_n_sq/n_n) + (s_s_sq/n_s)))
+
+(x_bar_n-x_bar_s)+(qt(0.75, min(n_n, n_s)-1)*sqrt((s_n_sq/n_n) + (s_s_sq/n_s)))
+
+t.test((data$price[data$category=="shop-televisi-digital"]), (data$price[data$category=="other"]))
+
+
+```
+
+####(b) Bootstrapping Method
+
+```{r}
+
+r <- data$price[data$category=="shop-televisi-digital"]
+c <- data$price[data$category=="other"]
+
+
+boot.paired.bca(r, c, null.hyp = NULL,
+                alternative = c("two.sided"),
+                conf.level = 0.95, type = NULL, R = 9999)
+```
+
+### two sample test for difference in proportions 
+
+  two brand flash drive has same proportion sales in thier brand 
+####(a) traditional statistical tools
+
+```{r}
+
+prop.test(c(6520,40),c(44220,120),correct=FALSE)
+```
+
+####(b) Bootstrapping Method
+
+```{r}
+
+shop.televisi.digital <- factor(rep(c("shop-televisi-digital", "other"), c(4422, 10942-4422)))
+table(shop.televisi.digital)
+
+shop.televisi.digital <- rep(c(1, 0), c(4422, 10942-4422))
+table(shop.televisi.digital )
+
+shop.televisi.digital[0]
+
+boot.two.per(data$price,shop.televisi.digital,mean, stacked = TRUE, variable = data,
+             null.hyp = NULL, alternative = c("two.sided"),
+             conf.level = 0.95, type = NULL, R = 9999)
+
+```
+
+  
+### Chi-square 
+####a) traditional statistical tools  
+  The number of sales for  each brand in flash drive 
+  
+```{r}
+
+#It compares multiple observed proportions to expected probabilities. 
+
+set.seed(0)
+data("dataset$cate")
+head(dataset$category)
+
+# x <- c(1963 ,3394 ,7627 ,8857 ,9439)
+# x <- c(55800, 2499000, 1275000, 3850000, 3984100, 3788000)
+#probability of above samples are
+table(dataset$category)
+prop.table(table(dataset$category))
+sum(((table(dataset$category) - 10492*0.2)^2)/10492*0.2)
+# prop.table(table(data))
+
+# collected some random sample price for Chi-square goodness of fit test
+#Assuming each of the class in category have same proportion
+pchisq(195.9637, df = 5-1, lower.tail = FALSE)
+# chi <- chisq.test(x, p = c(1/6, 1/6, 1/6, 1/6 ,1/6,1/6 ))
+# chi
+
+```
+
+
+
+
+  
+
+## Appendix
+
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
+
